@@ -2,47 +2,30 @@
 
 function linode_ConfigOptions() {
   $configarray = array(
-    "api_key" => array(
-      "FriendlyName" => "API Key",
+    "plan_id" => array (
+      "FriendlyName" => "Plan ID",
       "Type" => "text",
-      "Size" => "25"
+      "Size" => "25",
+      "Description" => "Linode plan ID"
     ),
-    #"Plan" => array("Type" => "text", "Size" => "25" ),
-    #"Data Center" => array( "Type" => "text", "Size" => "25" ),
+    "datecenter_id" => array (
+      "FriendlyName" => "Data Center ID",
+      "Type" => "text",
+      "Size" => "25",
+      "Description" => "Linode date center ID"
+    ),
     "subscription" => array (
       "FriendlyName" => "Subscription Term",
       "Type" => "dropdown",
       "Options" => "1,12,24",
       "Default" => "1",
+      "Description" => "Linode subscription term, in months,"
     ),
   );
   return $configarray;
 }
 
 function linode_CreateAccount($params) {
-  $serviceid = $params["serviceid"];
-  $pid = $params["pid"];
-  $producttype = $params["producttype"];
-  $domain = $params["domain"];
-  $username = $params["username"];
-  $password = $params["password"];
-  $clientsdetails = $params["clientsdetails"];
-  $customfields = $params["customfields"];
-  $configoptions = $params["configoptions"];
-
-  $configoption1 = $params["configoption1"];
-  $configoption2 = $params["configoption2"];
-  $configoption3 = $params["configoption3"];
-  $configoption4 = $params["configoption4"];
-
-  $server = $params["server"];
-  $serverid = $params["serverid"];
-  $serverip = $params["serverip"];
-  $serverusername = $params["serverusername"];
-  $serverpassword = $params["serverpassword"];
-  $serveraccesshash = $params["serveraccesshash"];
-  $serversecure = $params["serversecure"];
-
   if ($successful) {
     $result = "success";
   } else {
@@ -127,6 +110,45 @@ function linode_AdminCustomButtonArray() {
     "Shutdown Server" => "shutdown",
   );
   return $buttonarray;
+}
+
+function linode_remote( $command=false, $post=array() ) {
+  require('Services/Linode.php');
+  require(ROOTDIR.'/configuration.php');
+
+  $return['result'] = "error";
+  $return['message'] = "Unknow error";
+
+  if( !class_exists('Services_Linode') ) {
+    $return['message'] = "Linode API wrapper missing";
+    return $return;
+  }
+
+  if( !$linode_api_key ) {
+    $return['message'] = "Linode API key missing";
+    return $return;
+  }
+
+  if( !$command ) {
+    $return['message'] = "Linode API command missing";
+    return $return;
+  }
+
+  try {
+    $linode = new Services_Linode($linode_api_key);
+    $result =  $linode->$command( $post );
+
+    if( !empty( $result['ERRORARRAY'] ) ) {
+      $return['message'] = $result['ERRORARRAY'][0]['ERRORMESSAGE'];
+      return $return;
+    }
+
+    return $result['DATA'];
+
+  } catch (Services_Linode_Exception $e) {
+    $return['message'] = $e->getMessage();
+    return $return;
+  }
 }
 
 ?>
