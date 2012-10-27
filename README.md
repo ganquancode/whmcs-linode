@@ -12,3 +12,5 @@ $linode_api_key = '1234567890';
 ```
 
 Where '1234567890' is your Linode API key
+
+You'll also need a custom field per product call 'Linode ID'
