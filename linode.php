@@ -1,25 +1,51 @@
 <?php
 
 function linode_ConfigOptions() {
+  //I'm going to populate the options with the related names and then look those up later on in the other functions
+  //Remote call for datacenters
+  $results = linode_remote('avail_datacenters');
+  $datacenters = "";
+  if( $return['result'] == 'success' ) {
+    $datacenters = implode_on_key($return, 'LOCATION', ',');
+  }
+
+  //Remote call for plans
+  $results = linode_remote('avail_linodeplans');
+  $plans = "";
+  if( $return['result'] == 'success' ) {
+    $plans = implode_on_key($return, 'LABEL', ',');
+  }
+
+  //Remote call for distributions
+  $results = linode_remote('avail_distributions');
+  $distributions = "";
+  if( $return['result'] == 'success' ) {
+    $distributions = implode_on_key($return, 'LABEL', ',');
+  }
+
   $configarray = array(
-    "datecenter_id" => array (
-      "FriendlyName" => "Data Center ID",
-      "Type" => "text",
-      "Size" => "25",
-      "Description" => "Linode date center ID"
+    "datacenter" => array (
+      "FriendlyName" => "Data Center",
+      "Type" => "dropdown",
+      "Options" => $datacenters,
+      "Default" => "1"
     ),
-    "plan_id" => array (
-      "FriendlyName" => "Plan ID",
+    "plan" => array (
+      "FriendlyName" => "Plan",
+      "Type" => "dropdown",
+      "Options" => $datacenters,
+      "Default" => "1"
+    ),
+    "distribution" => array (
+      "FriendlyName" => "Distribution",
       "Type" => "text",
       "Size" => "25",
-      "Description" => "Linode plan ID"
     ),
     "subscription" => array (
       "FriendlyName" => "Subscription Term",
       "Type" => "dropdown",
       "Options" => "1,12,24",
       "Default" => "1",
-      "Description" => "Linode subscription term, in months,"
     ),
   );
   return $configarray;
@@ -30,7 +56,7 @@ function linode_CreateAccount($params) {
   //if( !array_key_exists('Linode ID', $params['customfields'] ) ) {
   //  return "The Linode ID custom field doesn't exist. Check the install notes.";
   //}
-  //Yeah, I could've used the above but I need the ID anyway later on
+  //Yeah, I could've used the above but I need the ID later on anyway
   $result = select_query(
     'tblcustomfields',
     '*',
@@ -48,7 +74,7 @@ function linode_CreateAccount($params) {
   if( !empty( $params['customfields']['Linode ID'] ) ) {
     return "Seems the service is already created";
   }
-  //Remote call
+  //Remote call to create the Linode
   $return = linode_remote(
     'linode_create',
     array(
@@ -66,7 +92,7 @@ function linode_CreateAccount($params) {
   if( !array_key_exists('LinodeID', $return ) ) {
     return "The Linode ID wan't return by the API";
   }
-  //Set the Linode ID custom field, well find it first
+  //Set the Linode ID custom field
   $result = update_query(
     'tblcustomfieldsvalues',
     array(
@@ -80,11 +106,46 @@ function linode_CreateAccount($params) {
 }
 
 function linode_TerminateAccount($params) {
-  if ($successful) {
-    $result = "success";
-  } else {
-    $result = "Error Message Goes Here...";
+  //Need to get the Linode ID, also need the field ID again though
+  $result = select_query(
+    'tblcustomfields',
+    '*',
+    array(
+      "relid" => $params['pid'],
+      "type" => "product",
+      "fieldname" => "Linode ID"
+    )
+  );
+  $tblcustomfield = mysql_fetch_array($result);
+  if( !$tblcustomfield ) {
+    return "The Linode ID custom field doesn't exist. Check the install notes.";
   }
+  //If Linode ID is not set, the service is probably not created
+  if( empty( $params['customfields']['Linode ID'] ) ) {
+    return "Seems the service is already created";
+  }
+  //Remote call
+  $return = linode_remote(
+    'linode_create',
+    array(
+      'DatacenterID' => $params['customfields']['Linode ID'],
+      'skipChecks' => 1
+    )
+  );
+  //Processing the result for failures and the odd success
+  if( $return['result'] == 'error' ) {
+    return $return['message'];
+  }
+  //Nullify Linode ID custom field
+  $result = update_query(
+    'tblcustomfieldsvalues',
+    array(
+      "value" => ""
+    ),
+    array(
+      "relid" => $tblcustomfield['id']
+    )
+  );
   return $result;
 }
 
@@ -195,6 +256,15 @@ function linode_remote( $command=false, $post=array() ) {
     $return['message'] = $e->getMessage();
     return $return;
   }
+}
+
+function implode_on_key($array, $key, $sep, $prefix = '') {
+  $string = '';
+  if(empty($array)) return '';
+  foreach($array as $element) {
+    $string .= $prefix.$element[$key].$sep;
+  }
+  return substr($string, 0, -strlen($sep));
 }
 
 ?>
