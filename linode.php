@@ -1,43 +1,19 @@
 <?php
 
 function linode_ConfigOptions() {
-  //I'm going to populate the options with the related names and then look those up later on in the other functions
-  //Remote call for datacenters
-  $results = linode_remote('avail_datacenters');
-  $datacenters = "";
-  if( $return['result'] == 'success' ) {
-    $datacenters = implode_on_key($return, 'LOCATION', ',');
-  }
-
-  //Remote call for plans
-  $results = linode_remote('avail_linodeplans');
-  $plans = "";
-  if( $return['result'] == 'success' ) {
-    $plans = implode_on_key($return, 'LABEL', ',');
-  }
-
-  //Remote call for distributions
-  $results = linode_remote('avail_distributions');
-  $distributions = "";
-  if( $return['result'] == 'success' ) {
-    $distributions = implode_on_key($return, 'LABEL', ',');
-  }
-
   $configarray = array(
     "datacenter" => array (
       "FriendlyName" => "Data Center",
-      "Type" => "dropdown",
-      "Options" => $datacenters,
-      "Default" => "1"
+      "Type" => "text",
+      "Size" => "25",
     ),
     "plan" => array (
       "FriendlyName" => "Plan",
-      "Type" => "dropdown",
-      "Options" => $datacenters,
-      "Default" => "1"
+      "Type" => "text",
+      "Size" => "25",
     ),
     "distribution" => array (
-      "FriendlyName" => "Distribution",
+      "FriendlyName" => "Distributions",
       "Type" => "text",
       "Size" => "25",
     ),
@@ -45,7 +21,6 @@ function linode_ConfigOptions() {
       "FriendlyName" => "Subscription Term",
       "Type" => "dropdown",
       "Options" => "1,12,24",
-      "Default" => "1",
     ),
   );
   return $configarray;
@@ -219,7 +194,7 @@ function linode_AdminCustomButtonArray() {
 }
 
 function linode_remote( $command=false, $post=array() ) {
-  require('Services/Linode.php');
+  require_once('Services/Linode.php');
   require(ROOTDIR.'/configuration.php');
   //Default return stuff
   $return['result'] = "error";
@@ -249,22 +224,12 @@ function linode_remote( $command=false, $post=array() ) {
       return $return;
     }
     //Yay, good stuff :)
-    $return['result'] = $return['message'] = "success";
     return $result['DATA'];
     //Not so good stuff :(
   } catch (Services_Linode_Exception $e) {
     $return['message'] = $e->getMessage();
     return $return;
   }
-}
-
-function implode_on_key($array, $key, $sep, $prefix = '') {
-  $string = '';
-  if(empty($array)) return '';
-  foreach($array as $element) {
-    $string .= $prefix.$element[$key].$sep;
-  }
-  return substr($string, 0, -strlen($sep));
 }
 
 ?>
